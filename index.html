@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Water Reminder</title>
+<style>
+  body { padding: var(--s2, 16px); color: var(--text-color, #1f2933); }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  h2 { font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+  .card { margin-bottom: 14px; padding: 14px; }
+  .big { font-size: 26px; font-weight: 600; }
+  .bar { height: 12px; background: var(--divider-color, #d5dde5); border-radius: 6px; overflow: hidden; margin: 10px 0; }
+  .bar > div { height: 100%; width: 0; background: var(--c-primary, #1e88e5); transition: width .3s; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  .row > label { flex: 1; min-width: 120px; margin: 0; }
+  label { display: block; font-size: 13px; margin-bottom: 10px; }
+  label.chk { display: flex; gap: 8px; align-items: center; }
+  input[type=number], input[type=time] { display: block; width: 100%; margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .msg { font-size: 13px; min-height: 18px; margin-top: 8px; }
+  .msg.err { color: var(--c-warn, #c62828); }
+  .slots { font-size: 13px; line-height: 1.6; opacity: .85; }
+  .hist { display: flex; align-items: flex-end; gap: 6px; height: 90px; margin-top: 8px; }
+  .hist div { flex: 1; text-align: center; font-size: 10px; opacity: .8; }
+  .hist span { display: block; background: var(--c-primary, #1e88e5); border-radius: 3px 3px 0 0; margin-bottom: 2px; min-height: 2px; }
+</style>
+</head>
+<body>
+  <h1><span data-i18n="WATER.TITLE"></span></h1>
+
+  <div class="card">
+    <h2 data-i18n="WATER.TODAY"></h2>
+    <div class="big"><span id="intake">0</span> / <span id="goal">0</span> ml</div>
+    <div class="bar"><div id="fill"></div></div>
+    <div id="status" class="msg"></div>
+    <div class="row">
+      <button class="btn-primary" id="addCup"></button>
+      <button id="undo" data-i18n="WATER.UNDO"></button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label><span data-i18n="WATER.CUSTOM_LABEL"></span><input type="number" id="customMl" min="1" max="5000" step="10"></label>
+      <button id="addCustom" data-i18n="WATER.ADD_CUSTOM"></button>
+    </div>
+    <div class="msg err" id="customMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="WATER.SETTINGS"></h2>
+    <label class="chk"><input type="checkbox" id="enabled"> <span data-i18n="WATER.ENABLED"></span></label>
+    <div class="grid">
+      <label><span data-i18n="WATER.GOAL"></span><input type="number" id="goalMl" min="500" max="10000" step="50"></label>
+      <label><span data-i18n="WATER.CUP"></span><input type="number" id="cupMl" min="50" max="1000" step="10"></label>
+      <label><span data-i18n="WATER.START"></span><input type="time" id="startTime"></label>
+      <label><span data-i18n="WATER.END"></span><input type="time" id="endTime"></label>
+    </div>
+    <button class="btn-primary" id="save" data-i18n="WATER.SAVE"></button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="WATER.SCHEDULE"></h2>
+    <div class="slots" id="slots"></div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="WATER.HISTORY"></h2>
+    <div class="hist" id="hist"></div>
+  </div>
+
+<!-- English fallback, kept in sync with i18n/en.json by scripts/build.py -->
+<script type="application/json" id="i18n-fallback">{"WATER": {"TITLE": "Water Reminder", "SIDE_BUTTON": "Water", "SHORTCUT_ADD_CUP": "Water: log a glass", "TODAY": "Today", "ADD_CUP": "+ {{ml}} ml", "ADD_CUSTOM": "Add", "CUSTOM_LABEL": "Other amount (ml)", "UNDO": "Undo last glass", "GOAL_REACHED": "Goal reached!", "SETTINGS": "Settings", "ENABLED": "Reminders enabled", "GOAL": "Daily goal (ml)", "CUP": "Glass size (ml)", "START": "Start time", "END": "End time", "SAVE": "Save", "SAVED": "Settings saved.", "SAVE_ERROR": "Could not save: {{error}}", "ERR_GOAL": "The goal must be between 500 and 10000 ml.", "ERR_CUP": "The glass size must be between 50 and 1000 ml.", "ERR_TIME_REQUIRED": "Enter both a start and an end time.", "ERR_TIME_ORDER": "The end time must be later than the start time (same day).", "ERR_CUSTOM": "Enter an amount between 1 and 5000 ml.", "SCHEDULE": "Reminder times", "SCHEDULE_SUMMARY": "{{count}} reminders of {{cup}} ml: {{times}}", "SCHEDULE_INVALID": "Set an end time later than the start time.", "HISTORY": "Last 7 days", "NOTIFY_TITLE": "Drink water", "NOTIFY_BODY": "Time to drink {{cup}} ml. Today: {{intake}} / {{goal}} ml ({{missing}} ml to go).", "SNACK_ACTION": "+{{ml}} ml", "LOGGED": "Logged {{ml}} ml. Today: {{intake}} / {{goal}} ml."}}</script>
+<script>
+(function () {
+  var DEFAULTS = { enabled: true, goalMl: 2000, cupMl: 250, startTime: '08:00', endTime: '20:00' };
+  var FALLBACK = JSON.parse(document.getElementById('i18n-fallback').textContent);
+  var cfg = Object.assign({}, DEFAULTS);
+  var log = {};
+  var today = '';
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---- i18n -------------------------------------------------------------
+  function lookup(obj, key) {
+    return key.split('.').reduce(function (o, k) { return o && o[k]; }, obj);
+  }
+  function interpolate(str, params) {
+    return str.replace(/\{\{(\w+)\}\}/g, function (m, k) {
+      return params && k in params ? params[k] : m;
+    });
+  }
+  // In the iframe, PluginAPI.translate goes through the host bridge and returns
+  // a Promise, so translations are preloaded into a cache and t() stays sync.
+  var cache = {};
+  function flatKeys(obj, prefix) {
+    var out = [];
+    Object.keys(obj).forEach(function (k) {
+      var key = prefix ? prefix + '.' + k : k;
+      if (obj[k] && typeof obj[k] === 'object') out = out.concat(flatKeys(obj[k], key));
+      else out.push(key);
+    });
+    return out;
+  }
+  async function loadTranslations() {
+    if (typeof PluginAPI.translate !== 'function') return;
+    var next = {};
+    await Promise.all(flatKeys(FALLBACK, '').map(async function (key) {
+      try {
+        var r = await PluginAPI.translate(key);
+        if (typeof r === 'string' && r && r !== key) next[key] = r;
+      } catch (e) { /* keep fallback */ }
+    }));
+    cache = next;
+  }
+  function t(key, params) {
+    var s = typeof cache[key] === 'string' ? cache[key] : lookup(FALLBACK, key);
+    return typeof s === 'string' ? interpolate(s, params) : key;
+  }
+  function applyStaticTexts() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+  }
+
+  // ---- helpers ----------------------------------------------------------
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function toMin(v) { var p = String(v).split(':'); return Number(p[0]) * 60 + Number(p[1]); }
+  function fmt(m) { return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+  function dateStr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+  async function readJson(key, fb) {
+    try { var raw = await PluginAPI.loadSyncedData(key); return raw ? JSON.parse(raw) : fb; }
+    catch (e) { return fb; }
+  }
+  async function getToday() {
+    if (typeof PluginAPI.getDayContext === 'function') {
+      try { return (await PluginAPI.getDayContext()).todayStr; } catch (e) { /* local clock */ }
+    }
+    return dateStr(new Date());
+  }
+  function setMsg(id, text, isErr) {
+    var el = $(id);
+    el.textContent = text;
+    el.className = 'msg' + (isErr ? ' err' : '');
+  }
+  function buildSlots(c) {
+    var n = Math.max(1, Math.ceil(c.goalMl / c.cupMl));
+    var s = toMin(c.startTime), e = toMin(c.endTime), out = [];
+    for (var i = 0; i < n; i++) out.push(n === 1 ? s : Math.round(s + (i * (e - s)) / (n - 1)));
+    return out;
+  }
+
+  // ---- render -----------------------------------------------------------
+  function render() {
+    applyStaticTexts();
+    var intake = log[today] || 0;
+    $('intake').textContent = intake;
+    $('goal').textContent = cfg.goalMl;
+    $('fill').style.width = Math.min(100, (intake / cfg.goalMl) * 100) + '%';
+    $('addCup').textContent = t('WATER.ADD_CUP', { ml: cfg.cupMl });
+    $('status').className = 'msg';
+    $('status').textContent = intake >= cfg.goalMl ? t('WATER.GOAL_REACHED') : '';
+
+    $('enabled').checked = cfg.enabled;
+    $('goalMl').value = cfg.goalMl;
+    $('cupMl').value = cfg.cupMl;
+    $('startTime').value = cfg.startTime;
+    $('endTime').value = cfg.endTime;
+
+    if (toMin(cfg.endTime) > toMin(cfg.startTime)) {
+      var slots = buildSlots(cfg);
+      $('slots').textContent = t('WATER.SCHEDULE_SUMMARY', {
+        count: slots.length, cup: cfg.cupMl, times: slots.map(fmt).join(' · '),
+      });
+    } else {
+      $('slots').textContent = t('WATER.SCHEDULE_INVALID');
+    }
+
+    var hist = $('hist');
+    hist.innerHTML = '';
+    var days = [], max = cfg.goalMl;
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date(); d.setDate(d.getDate() - i);
+      var key = dateStr(d), v = log[key] || 0;
+      days.push({ d: d, v: v });
+      max = Math.max(max, v);
+    }
+    days.forEach(function (x) {
+      var col = document.createElement('div');
+      var bar = document.createElement('span');
+      bar.style.height = Math.round((x.v / max) * 64) + 'px';
+      bar.title = x.v + ' ml';
+      col.appendChild(bar);
+      col.appendChild(document.createTextNode(pad(x.d.getDate()) + '/' + pad(x.d.getMonth() + 1)));
+      hist.appendChild(col);
+    });
+  }
+
+  // ---- data -------------------------------------------------------------
+  async function load() {
+    var saved = await readJson('config', {});
+    cfg = Object.assign({}, DEFAULTS, saved);
+    log = await readJson('log', {});
+    today = await getToday();
+    render();
+  }
+  async function addIntake(ml) {
+    log = await readJson('log', {});
+    log[today] = Math.max(0, (log[today] || 0) + ml);
+    var keys = Object.keys(log).sort();
+    while (keys.length > 60) delete log[keys.shift()];
+    await PluginAPI.persistDataSynced(JSON.stringify(log), 'log');
+    render();
+  }
+
+  $('addCup').onclick = function () { addIntake(cfg.cupMl); };
+  $('undo').onclick = function () { addIntake(-cfg.cupMl); };
+  $('addCustom').onclick = function () {
+    var v = parseInt($('customMl').value, 10);
+    if (!(v >= 1 && v <= 5000)) return setMsg('customMsg', t('WATER.ERR_CUSTOM'), true);
+    setMsg('customMsg', '');
+    $('customMl').value = '';
+    addIntake(v);
+  };
+
+  $('save').onclick = async function () {
+    var next = {
+      enabled: $('enabled').checked,
+      goalMl: parseInt($('goalMl').value, 10),
+      cupMl: parseInt($('cupMl').value, 10),
+      startTime: $('startTime').value,
+      endTime: $('endTime').value,
+    };
+    if (!(next.goalMl >= 500 && next.goalMl <= 10000)) return setMsg('msg', t('WATER.ERR_GOAL'), true);
+    if (!(next.cupMl >= 50 && next.cupMl <= 1000)) return setMsg('msg', t('WATER.ERR_CUP'), true);
+    if (!next.startTime || !next.endTime) return setMsg('msg', t('WATER.ERR_TIME_REQUIRED'), true);
+    if (toMin(next.endTime) <= toMin(next.startTime)) return setMsg('msg', t('WATER.ERR_TIME_ORDER'), true);
+    try {
+      await PluginAPI.persistDataSynced(JSON.stringify(next), 'config');
+      cfg = next;
+      render();
+      setMsg('msg', t('WATER.SAVED'));
+    } catch (e) {
+      setMsg('msg', t('WATER.SAVE_ERROR', { error: String(e) }), true);
+    }
+  };
+
+  applyStaticTexts();
+  load();
+  loadTranslations().then(render);
+  window.addEventListener('focus', load);
+  try { PluginAPI.registerHook(PluginAPI.Hooks.PERSISTED_DATA_CHANGED, load); } catch (e) { /* optional */ }
+  try { PluginAPI.registerHook(PluginAPI.Hooks.LANGUAGE_CHANGE, function () { loadTranslations().then(render); }); } catch (e) { /* optional */ }
+})();
+</script>
+</body>
+</html>
