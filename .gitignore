@@ -1,0 +1,20 @@
+# Build output (the ZIP is published as a release asset, not committed)
+dist/
+
+# Python (scripts/build.py)
+__pycache__/
+*.pyc
+.venv/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Local environment variables and secrets
+.env
