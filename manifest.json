@@ -1,7 +1,7 @@
 {
   "id": "water-reminder",
   "name": "Water Reminder",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "manifestVersion": 1,
   "minSupVersion": "20.1.0",
   "description": "Daily water goal in ml with reminders spread between a start and an end time.",
@@ -10,7 +10,6 @@
   "permissions": [],
   "dataSharing": [],
   "iFrame": true,
-  "sidePanel": true,
   "isSkipMenuEntry": true,
   "icon": "icon.svg",
   "i18n": {
