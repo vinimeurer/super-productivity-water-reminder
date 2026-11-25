@@ -1,7 +1,6 @@
 // Water Reminder - host side (runs in the app renderer, not a module).
-// Reminders, side panel button and shortcut live here; the UI is index.html.
+// Reminders, left menu entry and shortcut live here; the UI is index.html.
 (function () {
-  var PLUGIN_ID = 'water-reminder';
   var DEFAULTS = {
     enabled: true,
     goalMl: 2000,
@@ -11,7 +10,7 @@
   };
   // English fallback in case translations are not available (older hosts).
   var FALLBACK = {
-    'WATER.SIDE_BUTTON': 'Water',
+    'WATER.MENU_ENTRY': 'Water',
     'WATER.SHORTCUT_ADD_CUP': 'Water: log a glass',
     'WATER.NOTIFY_TITLE': 'Drink water',
     'WATER.NOTIFY_BODY':
@@ -187,14 +186,13 @@
     }
   }
 
-  function openPanel() {
-    PluginAPI.dispatchAction({ type: '[Layout] Show PluginPanel', pluginId: PLUGIN_ID });
-  }
-
-  PluginAPI.registerSidePanelButton({
-    label: t('WATER.SIDE_BUTTON'),
+  // Left sidebar menu entry; opens index.html as a full view in the main area.
+  PluginAPI.registerMenuEntry({
+    label: t('WATER.MENU_ENTRY'),
     icon: 'water_drop',
-    onClick: openPanel,
+    onClick: function () {
+      PluginAPI.showIndexHtmlAsView();
+    },
   });
 
   PluginAPI.registerShortcut({

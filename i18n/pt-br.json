@@ -1,7 +1,7 @@
 {
   "WATER": {
     "TITLE": "Lembrete de Água",
-    "SIDE_BUTTON": "Água",
+    "MENU_ENTRY": "Água",
     "SHORTCUT_ADD_CUP": "Água: registrar um copo",
     "TODAY": "Hoje",
     "ADD_CUP": "+ {{ml}} ml",

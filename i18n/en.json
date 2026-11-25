@@ -1,7 +1,7 @@
 {
   "WATER": {
     "TITLE": "Water Reminder",
-    "SIDE_BUTTON": "Water",
+    "MENU_ENTRY": "Water",
     "SHORTCUT_ADD_CUP": "Water: log a glass",
     "TODAY": "Today",
     "ADD_CUP": "+ {{ml}} ml",
