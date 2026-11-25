@@ -6,7 +6,7 @@ Desenvolvido contra a API de plugins da versão 20.1.0 (`minSupVersion: 20.1.0`)
 
 ## Recursos
 
-- Botão **Água** no painel lateral direito, que abre a tela do plugin.
+- Item **Água** no menu lateral esquerdo, que abre o plugin na área principal do app.
 - Meta diária (ml), tamanho do copo, **hora inicial** e **hora final**.
 - Lembretes distribuídos igualmente entre a hora inicial e a final (`ceil(meta / copo)` lembretes). Cada um aparece como notificação e como aviso com o botão `+ copo`.
 - Progresso do dia, desfazer último copo, quantidade avulsa e histórico dos últimos 7 dias.
@@ -17,7 +17,7 @@ Desenvolvido contra a API de plugins da versão 20.1.0 (`minSupVersion: 20.1.0`)
 
 1. Baixe `water-reminder.zip` na página de [Releases](../../releases).
 2. No Super Productivity, abra **Settings → Plugins → Choose Plugin File** e selecione o ZIP.
-3. Ative o plugin e clique no ícone de gota no painel lateral direito.
+3. Ative o plugin e clique em **Água** no menu lateral esquerdo.
 
 Teste primeiro em uma instância de testes (https://test-app.super-productivity.com/), não nos seus dados reais.
 
@@ -29,8 +29,8 @@ Na tela do plugin, ajuste a meta, o copo e o intervalo em **Configuração** e c
 
 ```
 manifest.json     metadados, permissões e idiomas (i18n.languages)
-plugin.js         lado host: lembretes (timer de 1 min), botão do painel, atalho
-index.html        interface (CSS e JS inline), roda em iframe no painel lateral
+plugin.js         lado host: lembretes (timer de 1 min), item de menu, atalho
+index.html        interface (CSS e JS inline), roda em iframe na área principal
 icon.svg          ícone
 i18n/en.json      textos em inglês (fonte da verdade)
 i18n/pt-br.json   textos em português do Brasil
